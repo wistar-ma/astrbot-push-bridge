@@ -1,0 +1,5 @@
+name: push_bridge
+display_name: 推送桥
+desc: 外部系统经 HTTP 接口借机器人往已绑定会话主动发消息（微信/企业微信/Telegram 等）
+version: 1.0.0
+author: wistar
