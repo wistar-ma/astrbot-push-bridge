@@ -133,28 +133,54 @@ class PushBridge(Star):
 
     # ---------- web api ----------
     async def _read_body(self):
-        # Prefer astrbot.api.web request proxy; fall back to quart request.
+        # AstrBot's web layer is Quart-based. Read parameters from every
+        # available source (query string, form, JSON body) and merge them.
+        params = {}
+        headers = {}
         req = web_request
-        if req is None:
-            from quart import request as req  # type: ignore
-        data = None
         try:
-            data = await req.get_json(force=False, silent=True)
+            from quart import request as qreq
+            req = qreq
         except Exception:
-            data = None
-        if data is None:
+            pass
+        if req is not None:
             try:
-                raw = await req.get_data()
-                if raw:
-                    data = json.loads(raw.decode("utf-8", "ignore"))
+                headers = req.headers or {}
+            except Exception:
+                headers = {}
+            try:
+                args = req.args or {}
+                for k in args.keys():
+                    params[k] = args.get(k)
+            except Exception:
+                pass
+            try:
+                form = await req.form
+                for k in form.keys():
+                    params[k] = form.get(k)
+            except Exception:
+                pass
+            data = None
+            try:
+                data = await req.get_json(force=False, silent=True)
             except Exception:
                 data = None
-        headers = {}
-        try:
-            headers = req.headers or {}
-        except Exception:
-            headers = {}
-        return data or {}, headers
+            if not isinstance(data, dict):
+                try:
+                    raw = await req.get_data()
+                    if raw:
+                        data = json.loads(raw.decode("utf-8", "ignore"))
+                except Exception:
+                    data = None
+            if isinstance(data, dict):
+                inner = data.get("data")
+                if isinstance(inner, dict) and ("text" in inner or "to" in inner):
+                    merged = dict(data)
+                    merged.update(inner)
+                    data = merged
+                params.update(data)
+        print("[push_bridge] send params keys:", sorted(params.keys()), flush=True)
+        return params, headers
 
     def _ok(self, payload):
         if json_response is not None:
