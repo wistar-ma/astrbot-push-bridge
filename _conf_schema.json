@@ -1,0 +1,1 @@
+{"push_token":{"default":"","description":"推送口令（外部系统调用接口时必须带上）","hint":"一串随机字符串；在插件配置里设置，调用方在请求头 X-Push-Token 或 JSON 字段 token 中带上","type":"string"}}
